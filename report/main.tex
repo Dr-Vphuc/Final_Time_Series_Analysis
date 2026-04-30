@@ -407,4 +407,514 @@ trúc mùa vụ mạnh trong ACF cho thấy các mô hình cần xử lý thành
 24 h một cách tường minh --- đây là lý do chính để đề xuất và so sánh ba phương
 pháp M1, M2, M3 trong các phần tiếp theo.
 
+% =============================================================================
+\section{Cơ sở lý thuyết}
+% TODO — sẽ bổ sung sau
+% =============================================================================
+
+% =============================================================================
+\section{Thực nghiệm và Kết quả}
+% =============================================================================
+
+\subsection{Cài đặt thực nghiệm}
+
+\subsubsection{Tiền xử lý và phân chia tập dữ liệu}
+
+Bước tiền xử lý lặp lại quy trình mô tả ở Phần~\ref{sec:data}: chuỗi
+01/06--31/08/2017 ($N = 2.208$ quan sát) không có giờ nào bị thiếu sau khi
+nội suy tuyến tính. Để đánh giá khả năng dự báo \emph{ngoài mẫu}, dữ liệu
+được chia theo tỷ lệ 80/20 theo thứ tự thời gian:
+
+\begin{itemize}
+  \item \textbf{Tập huấn luyện}: 01/06/2017 00:00 -- 13/08/2017 13:00
+        ($n_{\text{train}} = 1.766$ quan sát, $\approx 73{,}6$ ngày).
+  \item \textbf{Tập kiểm tra}: 13/08/2017 14:00 -- 31/08/2017 23:00
+        ($n_{\text{test}} = 442$ quan sát, $\approx 18{,}4$ ngày).
+\end{itemize}
+
+\noindent Tất cả tham số mô hình được ước lượng \emph{chỉ} trên tập huấn
+luyện; tập kiểm tra được dùng để đánh giá hiệu năng dự báo.
+Hình~\ref{fig:split} minh họa phân chia này trên toàn chuỗi.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s4_01_train_test_split.png}
+  \caption{Phân chia tập huấn luyện (xanh dương) và tập kiểm tra (cam)
+           trên chuỗi AEP 3 tháng.}
+  \label{fig:split}
+\end{figure}
+
+Ba chỉ số hiệu năng được dùng để so sánh các mô hình trên tập kiểm tra:
+\begin{align}
+  \text{RMSE} &= \sqrt{\frac{1}{n}\sum_{t=1}^{n}(y_t - \hat{y}_t)^2}, \quad
+  \text{MAE}  = \frac{1}{n}\sum_{t=1}^{n}|y_t - \hat{y}_t|, \quad
+  \text{MAPE} = \frac{100}{n}\sum_{t=1}^{n}\left|\frac{y_t - \hat{y}_t}{y_t}\right|.
+\end{align}
+Ngoài ra, kiểm định Ljung--Box với $\ell = 48$ bậc trễ dùng để chẩn đoán
+tự tương quan phần dư.
+
+% -----------------------------------------------------------------------------
+\subsection{Mô hình 1: Hồi quy biến chỉ số (Indicator)}
+
+\subsubsection{Thiết lập mô hình}
+
+Mô hình M1 giải thích tiêu thụ điện bằng hai tập biến giả:
+(i) 23 biến chỉ số giờ trong ngày $h \in \{1,\ldots,23\}$ (cơ sở: giờ 0),
+(ii) 6 biến chỉ số ngày trong tuần $d \in \{2,\ldots,7\}$ (cơ sở: Chủ nhật).
+Dạng hồi quy tuyến tính bội:
+
+\begin{equation}
+  y_t \;=\; \mu
+    + \sum_{h=1}^{23} \beta_h\,\mathbf{1}[\text{hour}_t = h]
+    + \sum_{d=2}^{7}  \gamma_d\,\mathbf{1}[\text{wday}_t = d]
+    + \varepsilon_t,
+    \qquad \varepsilon_t \sim (0,\sigma^2).
+  \label{eq:m1}
+\end{equation}
+
+Mô hình \eqref{eq:m1} có $1 + 23 + 6 = 30$ tham số và được ước lượng
+bằng OLS trên tập huấn luyện.
+
+\subsubsection{Kết quả ước lượng và dự báo}
+
+Mô hình M1 giải thích được $R^2 = 0{,}764$ phương sai trong tập huấn luyện
+(AIC $= 30.356{,}28$), phản ánh thực tế rằng chu kỳ ngày và tuần chiếm ưu
+thế nhưng vẫn còn phần biến thiên đáng kể chưa được giải thích.
+Dự báo trên tập kiểm tra cho RMSE $= 1.396{,}87$\,MW và MAPE $= 7{,}52\%$
+--- hiệu năng tốt nhất trong ba mô hình.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s4_02_model1_fit.png}
+  \caption{M1 (Indicator): dự báo (xanh) so với thực tế (xám) trên tập
+           kiểm tra 18 ngày.}
+  \label{fig:m1fit}
+\end{figure}
+
+Hình~\ref{fig:m1fit} cho thấy M1 bám sát biên độ dao động hàng ngày, tuy
+nhiên dự báo bị phẳng hóa so với thực tế ở các đỉnh và đáy, phản ánh
+giới hạn của mô hình tĩnh không nắm bắt được sự thay đổi ngắn hạn.
+
+\subsubsection{Chẩn đoán phần dư}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s4_03_model1_residuals.png}
+  \caption{M1: phần dư theo thời gian, ACF phần dư và biểu đồ Q-Q.}
+  \label{fig:m1resid}
+\end{figure}
+
+Phần dư M1 (Hình~\ref{fig:m1resid}) thể hiện cấu trúc tự tương quan rõ
+ràng: ACF vẫn còn spike tại bội số của 24, kiểm định Ljung--Box
+$Q(48)$ cho $p < 0{,}001$. Điều này khẳng định M1 chỉ nắm bắt được
+cấu trúc trung bình mùa vụ nhưng bỏ qua phần động lực học thời gian
+trong phần dư. Biểu đồ Q-Q cho thấy phần dư xấp xỉ chuẩn với đuôi
+nhẹ bên phải.
+
+% -----------------------------------------------------------------------------
+\subsection{Mô hình 2: Hồi quy điều hòa Fourier}
+
+\subsubsection{Lựa chọn số sóng $K$}
+
+Mô hình M2 xấp xỉ thành phần mùa vụ bằng $K$ cặp sóng hài:
+
+\begin{equation}
+  y_t = \alpha_0
+    + \sum_{k=1}^{K}\left[
+        a_k \cos\!\left(\frac{2\pi k\,t}{m}\right)
+      + b_k \sin\!\left(\frac{2\pi k\,t}{m}\right)
+      \right]
+    + \varepsilon_t,
+    \qquad m = 24,
+  \label{eq:m2}
+\end{equation}
+
+với $2K + 1$ tham số. $K$ được chọn theo tiêu chí AIC trên tập huấn luyện
+với $K \in \{1, 2, 3, 4\}$.
+
+\begin{table}[H]
+  \centering
+  \caption{AIC, BIC và $\overline{R}^2$ của mô hình Fourier theo số sóng $K$.}
+  \label{tab:fourier_k}
+  \begin{tabular}{@{}rcccl@{}}
+    \toprule
+    $K$ & Số tham số & AIC & BIC & $\overline{R}^2$ \\
+    \midrule
+    1 & 3  & 30\,811{,}04 & 30\,832{,}95 & 0{,}6854 \\
+    \textbf{2} & \textbf{5}  & \textbf{30\,769{,}23} & \textbf{30\,802{,}09} & \textbf{0{,}6931} \\
+    3 & 7  & 30\,770{,}45 & 30\,814{,}26 & 0{,}6932 \\
+    4 & 9  & 30\,772{,}99 & 30\,827{,}75 & 0{,}6932 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+$K = 2$ cho AIC thấp nhất (Bảng~\ref{tab:fourier_k},
+Hình~\ref{fig:fourier_k}): thêm sóng thứ ba trở đi không cải thiện
+đáng kể độ khớp nhưng tăng độ phức tạp.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.58\linewidth]{img/fig_s4_04_model2_k_selection.png}
+  \caption{AIC của mô hình Fourier theo $K$; dấu sao đánh dấu $K^* = 2$.}
+  \label{fig:fourier_k}
+\end{figure}
+
+\subsubsection{Kết quả ước lượng và dự báo}
+
+Với $K^* = 2$ (5 tham số), M2 đạt $\overline{R}^2 = 0{,}6931$ và
+AIC $= 30.769{,}23$ trên tập huấn luyện. Trên tập kiểm tra:
+RMSE $= 1.568{,}68$\,MW, MAPE $= 8{,}35\%$ --- thấp hơn M1 khoảng
+0{,}8 điểm phần trăm.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s4_05_model2_fit.png}
+  \caption{M2 (Fourier $K=2$): dự báo (xanh lá) so với thực tế (xám) trên
+           tập kiểm tra.}
+  \label{fig:m2fit}
+\end{figure}
+
+Hình~\ref{fig:m2fit} cho thấy M2 tái tạo hình dạng sóng hàng ngày nhưng
+kém linh hoạt hơn M1 ở các giờ đỉnh, vì các hài bậc thấp chỉ xấp xỉ
+được biên dạng hình sin đơn giản.
+
+\subsubsection{Chẩn đoán phần dư}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s4_06_model2_residuals.png}
+  \caption{M2: phần dư theo thời gian, ACF phần dư và biểu đồ Q-Q.}
+  \label{fig:m2resid}
+\end{figure}
+
+Phần dư M2 (Hình~\ref{fig:m2resid}) có cấu trúc tự tương quan mạnh hơn
+M1: ACF vẫn còn spike chu kỳ 24 h, Ljung--Box $Q(48)$: $p < 0{,}001$.
+Biểu đồ Q-Q cho thấy đuôi phân phối dày hơn chuẩn, gợi ý sự hiện diện
+của dao động ngắn hạn mà mô hình Fourier bậc thấp không nắm bắt được.
+
+% -----------------------------------------------------------------------------
+\subsection{Mô hình 3: SARIMA}
+
+\subsubsection{Nhận dạng và ước lượng tham số}
+
+Kết quả EDA ở Phần~\ref{sec:stationary} xác nhận chuỗi dừng nhưng có
+cấu trúc mùa vụ mạnh tại $s = 24$ h. Hàm \texttt{auto.arima()} với
+ràng buộc $D = 1$ (một sai phân mùa), $p, q \leq 2$, $P, Q \leq 1$
+được áp dụng trên tập huấn luyện và chọn mô hình
+$\text{SARIMA}(2,0,2)(1,1,0)_{24}$:
+
+\begin{equation}
+  (1 - \phi_1 B - \phi_2 B^2)(1 - \Phi_1 B^{24})\,\nabla_{24}\,y_t
+  = (1 + \theta_1 B + \theta_2 B^2)\,\varepsilon_t,
+  \quad \varepsilon_t \sim \mathcal{N}(0,\sigma^2).
+  \label{eq:sarima}
+\end{equation}
+
+Mô hình \eqref{eq:sarima} có AIC $= 22.540{,}31$ --- thấp hơn đáng kể
+so với M1 và M2 do thang đo AIC khác biệt (chuỗi được sai phân).
+
+\subsubsection{Kết quả ước lượng và dự báo}
+
+SARIMA khớp cực kỳ tốt với tập huấn luyện: RMSE $= 154{,}21$\,MW,
+MAPE $= 0{,}80\%$. Tuy nhiên, hiệu năng dự báo \emph{ngoài mẫu} suy
+giảm nghiêm trọng: RMSE $= 2.676{,}65$\,MW, MAPE $= 13{,}93\%$ ---
+tệ nhất trong ba mô hình.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s4_07_model3_fit.png}
+  \caption{M3 SARIMA$(2,0,2)(1,1,0)_{24}$: dự báo (tím) so với thực tế
+           (xám) trên tập kiểm tra.}
+  \label{fig:m3fit}
+\end{figure}
+
+Hình~\ref{fig:m3fit} phản ánh hiện tượng quá khớp (overfitting): dự báo
+ngắn hạn ban đầu khá chính xác nhưng nhanh chóng lệch khỏi xu hướng
+thực tế khi horizon dự báo tăng. Khoảng cách giữa RMSE huấn luyện
+($154$\,MW) và kiểm tra ($2.677$\,MW) gấp $\sim 17$ lần, cho thấy mô
+hình ARMA đã ghi nhớ cấu trúc nhiễu trong tập huấn luyện thay vì
+học cấu trúc mùa vụ ổn định.
+
+\subsubsection{Chẩn đoán phần dư}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s4_08_model3_residuals.png}
+  \caption{M3: phần dư theo thời gian, ACF phần dư và biểu đồ Q-Q.}
+  \label{fig:m3resid}
+\end{figure}
+
+Phần dư M3 (Hình~\ref{fig:m3resid}) trông gần như nhiễu trắng trong
+miền thời gian, ACF giảm nhanh --- phù hợp với cấu trúc ARMA được ước
+lượng. Tuy nhiên Ljung--Box $Q(48)$: $p < 0{,}001$ vẫn bác bỏ giả
+thuyết nhiễu trắng, gợi ý còn một phần nhỏ cấu trúc chưa được nắm bắt.
+Biểu đồ Q-Q cho thấy phân phối phần dư gần chuẩn hơn M1 và M2.
+
+% -----------------------------------------------------------------------------
+\subsection{So sánh tổng hợp}
+
+\subsubsection{Bảng chỉ số hiệu năng}
+
+Bảng~\ref{tab:comparison} tổng hợp các chỉ số đánh giá của ba mô hình
+trên cả tập huấn luyện lẫn kiểm tra.
+
+\begin{table}[H]
+  \centering
+  \caption{So sánh ba mô hình: AIC, RMSE, MAE, MAPE trên tập huấn luyện
+           và kiểm tra, thời gian huấn luyện.}
+  \label{tab:comparison}
+  \begin{tabular}{@{}lrrrrrrr@{}}
+    \toprule
+    \multirow{2}{*}{Mô hình} & \multirow{2}{*}{AIC}
+      & \multicolumn{3}{c}{Tập huấn luyện}
+      & \multicolumn{3}{c}{Tập kiểm tra} \\
+    \cmidrule(lr){3-5}\cmidrule(lr){6-8}
+    & & RMSE & MAE & MAPE & RMSE & MAE & MAPE \\
+    \midrule
+    M1 Indicator      & 30\,356 & 1\,285 & 1\,030 & 6{,}79\% & \textbf{1\,397} & \textbf{1\,177} & \textbf{7{,}52\%} \\
+    M2 Fourier ($K{=}2$) & 30\,769 & 1\,464 & 1\,207 & 8{,}03\% & 1\,569 & 1\,287 & 8{,}35\% \\
+    M3 SARIMA         & 22\,540\rlap{$^*$} &   154 &   117 & 0{,}80\% & 2\,677 & 2\,233 & 13{,}93\% \\
+    \bottomrule
+    \multicolumn{8}{@{}l@{}}{\footnotesize $^*$AIC của SARIMA không thể so sánh trực tiếp
+      với M1/M2 vì được tính trên chuỗi sai phân.} \\
+  \end{tabular}
+\end{table}
+
+\noindent\textbf{Nhận xét chính.}
+\begin{enumerate}
+  \item \textbf{M1 đạt hiệu năng dự báo tốt nhất} trên tập kiểm tra
+        (RMSE $= 1.397$\,MW, MAPE $= 7{,}52\%$). Mô hình đơn giản với
+        30 tham số cho thấy sự cân bằng tốt giữa độ phức tạp và tính
+        tổng quát hóa.
+  \item \textbf{M2 Fourier} kém hơn M1 $\approx 0{,}83$ điểm MAPE, phản
+        ánh giới hạn của các hài bậc thấp trong việc mô hình hóa biên
+        dạng ngày không đơn giản.
+  \item \textbf{M3 SARIMA quá khớp nghiêm trọng}: RMSE tập huấn luyện
+        thấp hơn $17\times$ so với tập kiểm tra. Hiện tượng này xảy ra vì
+        mô hình ARMA$(2,2)$ ghi nhớ các dao động ngắn hạn trong tập
+        huấn luyện (mùa hè sớm) nhưng không khái quát hóa được sang giai
+        đoạn cuối tháng 8 có đặc điểm khác.
+  \item \textbf{Không mô hình nào đạt phần dư nhiễu trắng} ($p < 0{,}001$
+        cho cả ba mô hình), gợi ý tồn tại cấu trúc chưa được giải thích
+        --- có thể là thành phần tuần hoàn tuần ($s = 168$ h) hoặc phụ
+        thuộc vào thời tiết.
+\end{enumerate}
+
+\subsubsection{So sánh trực quan dự báo}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s5_01_forecast_compare.png}
+  \caption{Dự báo của ba mô hình so với giá trị thực tế trên toàn tập
+           kiểm tra (18 ngày).}
+  \label{fig:compare_full}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s5_02_forecast_zoom.png}
+  \caption{Zoom 7 ngày đầu tập kiểm tra: chu kỳ ngày và các sai lệch
+           giữa ba mô hình được thể hiện rõ.}
+  \label{fig:compare_zoom}
+\end{figure}
+
+Hình~\ref{fig:compare_full} và~\ref{fig:compare_zoom} minh họa ba đặc
+điểm quan trọng:
+\begin{itemize}
+  \item M1 và M2 bám sát pha của chu kỳ ngày nhưng dự báo \emph{tĩnh}
+        (không thay đổi từ ngày này sang ngày khác trong cùng thứ), dẫn
+        đến sai lệch khi điều kiện thực tế thay đổi.
+  \item M3 SARIMA dự báo chính xác trong $\sim$24--48 h đầu nhưng nhanh
+        chóng lệch về phía dưới khi horizon tăng, phản ánh sự trôi dạt
+        của dự báo dài hạn từ mô hình ARMA.
+  \item Biên độ thực tế (giữa đỉnh và đáy hàng ngày) xấp xỉ $4.000$\,MW,
+        trong khi M1 tái tạo biên độ trung bình $\approx 3.200$\,MW, dẫn
+        đến MAPE xấp xỉ $7\text{--}8\%$.
+\end{itemize}
+
+\subsubsection{So sánh phần dư}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{img/fig_s5_03_residual_acf_compare.png}
+  \caption{ACF phần dư của M1, M2, M3 (lag.max = 72).}
+  \label{fig:resid_acf}
+\end{figure}
+
+Hình~\ref{fig:resid_acf} đặt ba ACF phần dư cạnh nhau.
+M3 SARIMA cho phần dư gần nhiễu trắng nhất (spike ở lag thấp nhỏ hơn),
+xác nhận rằng bộ lọc ARMA$(2,2)\times(1,0)_{24}$ đã giải thích được
+phần lớn tự tương quan ngắn hạn. Ngược lại, M1 và M2 còn spike rõ
+tại lag 24, 48, 72 --- dấu hiệu của cấu trúc chu kỳ tuần ($7 \times 24$)
+chưa được mô hình hóa tường minh.
+
+\subsubsection{Thời gian tính toán}
+
+\begin{table}[H]
+  \centering
+  \caption{Thời gian huấn luyện các mô hình (đo bằng \texttt{proc.time()}
+           trên CPU đơn lõi).}
+  \label{tab:timing}
+  \begin{tabular}{@{}lrl@{}}
+    \toprule
+    Mô hình           & Thời gian (s) & Ghi chú \\
+    \midrule
+    M1 Indicator      & 0{,}020 & OLS với 30 biến \\
+    M2 Fourier ($K{=}2$) & $< 0{,}01$ & OLS với 5 biến \\
+    M3 SARIMA         & 2{,}570 & \texttt{auto.arima} tìm kiếm tham số \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+M2 Fourier là nhanh nhất nhờ số tham số tối thiểu, còn M3 SARIMA chậm
+hơn $\sim 100\times$ so với M1 do thuật toán tìm kiếm tham số của
+\texttt{auto.arima}. Trong bối cảnh dự báo thời gian thực với dữ liệu
+hàng giờ và yêu cầu cập nhật mô hình thường xuyên, tính đơn giản và
+tốc độ của M1 là một lợi thế thực tế đáng kể.
+
+% =============================================================================
+\section{Thảo luận}
+\label{sec:discussion}
+% =============================================================================
+
+\subsection{Khi nào nên dùng phương pháp nào}
+\label{sec:when_to_use}
+
+Kết quả thực nghiệm ở Phần~\ref{sec:experiment} cung cấp cơ sở thực nghiệm
+để đối chiếu ba phương pháp theo bốn tiêu chí: \emph{độ chính xác ngoài mẫu},
+\emph{tính diễn giải}, \emph{tốc độ tính toán} và \emph{chất lượng phần dư}.
+
+\subsubsection*{M1 — Hồi quy biến chỉ số}
+
+M1 phù hợp nhất khi: (i) biên dạng mùa vụ phức tạp (không thuần hình sin),
+(ii) cần diễn giải hệ số theo giờ và thứ cụ thể, và (iii) hệ thống yêu cầu
+dự báo ổn định trong horizon dài ($h \gg 24$ h). Trong thực nghiệm, M1 đạt
+MAPE $= 7{,}52\%$ trên 18 ngày kiểm tra --- tốt hơn cả M2 và M3 --- nhờ
+mỗi giờ--thứ có hệ số riêng thay vì buộc biên dạng vào một đường sin.
+Hạn chế chính là phần dư còn tự tương quan mạnh (Ljung--Box $p < 0{,}001$):
+mô hình \emph{không} nắm bắt được động lực học ngắn hạn giữa các quan sát
+liên tiếp, khiến khoảng tin cậy truyền thống của OLS không hợp lệ.
+
+\subsubsection*{M2 — Hồi quy điều hòa Fourier}
+
+M2 thích hợp khi: (i) biên dạng ngày gần hình sin, (ii) cần số tham số tối
+thiểu (5 tham số so với 30 của M1), và (iii) $K$ có thể được lựa chọn tự
+động theo AIC. Tuy nhiên khi biên dạng tiêu thụ điện có các đỉnh nhọn vào
+sáng sớm và chiều tối, các hài bậc thấp chỉ xấp xỉ được hình dạng trung bình,
+dẫn đến MAPE cao hơn M1 $\approx 0{,}83$ điểm phần trăm. M2 mang lại lợi
+thế rõ rệt khi kết hợp với bộ lọc ARIMA trên phần dư (mô hình \emph{Regression
+with ARIMA errors}), một hướng mở rộng tự nhiên được thảo luận ở
+Phần~\ref{sec:future_work}.
+
+\subsubsection*{M3 — SARIMA}
+
+SARIMA phù hợp với \emph{dự báo horizon ngắn} ($h \leq 24\text{--}48$ h)
+khi toàn bộ lịch sử gần được cập nhật liên tục (\emph{online forecasting}).
+Ưu điểm lý thuyết là SARIMA mô hình hóa đồng thời cả cấu trúc mùa vụ lẫn
+tự tương quan ngắn hạn, cho phép phần dư gần nhiễu trắng hơn M1 và M2
+(Hình~\ref{fig:resid_acf}). Trong thực nghiệm này, SARIMA gặp hiện tượng
+quá khớp nghiêm trọng (tỷ số RMSE kiểm tra/huấn luyện $\approx 17$) do
+tập huấn luyện chỉ có $\approx 74$ ngày: thành phần ARMA$(2,2)$ không đủ
+dữ liệu để ước lượng ổn định. Với tập dữ liệu dài hơn (ví dụ 1--2 năm) và
+phân tách rõ ràng giữa thành phần mùa vụ và thành phần ARMA, SARIMA kỳ
+vọng cạnh tranh tốt hơn ở horizon 24--48 h.
+
+Bảng~\ref{tab:guidelines} tóm tắt khuyến nghị lựa chọn mô hình theo bối cảnh.
+
+\begin{table}[H]
+  \centering
+  \caption{Hướng dẫn lựa chọn mô hình theo tình huống thực tế.}
+  \label{tab:guidelines}
+  \begin{tabular}{@{}p{4.2cm}ccc@{}}
+    \toprule
+    Tình huống & M1 & M2 & M3 \\
+    \midrule
+    Biên dạng mùa vụ phức tạp   & \checkmark\checkmark & \checkmark & \checkmark \\
+    Horizon dài ($h > 48$ h)     & \checkmark\checkmark & \checkmark & $\times$ \\
+    Horizon ngắn ($h \leq 24$ h) & \checkmark & \checkmark & \checkmark\checkmark \\
+    Dữ liệu ngắn ($< 90$ ngày)   & \checkmark\checkmark & \checkmark\checkmark & $\times$ \\
+    Cần diễn giải hệ số          & \checkmark\checkmark & \checkmark & $\times$ \\
+    Tốc độ tính toán tối ưu      & \checkmark & \checkmark\checkmark & $\times$ \\
+    Phần dư gần nhiễu trắng      & $\times$ & $\times$ & \checkmark \\
+    \bottomrule
+    \multicolumn{4}{@{}l@{}}{\footnotesize \checkmark\checkmark\ = rất phù hợp;\quad \checkmark\ = chấp nhận được;\quad $\times$\ = không khuyến khích.}
+  \end{tabular}
+\end{table}
+
+% -----------------------------------------------------------------------------
+\subsection{Hạn chế của project}
+\label{sec:limitations}
+
+\paragraph{Phạm vi dữ liệu hạn hẹp.}
+Chỉ sử dụng 3 tháng mùa hè (06--08/2017) từ một vùng điện lực (AEP). Mô hình
+được ước lượng trên dữ liệu đặc thù của mùa hè, chưa bao gồm biến động theo
+mùa năm (đông, xuân, thu) hay sự thay đổi hành vi tiêu thụ theo năm. Kết quả
+MAPE $\approx 7\text{--}8\%$ chỉ có giá trị trong bối cảnh tập kiểm tra 18 ngày
+cuối tháng 8, chưa được kiểm chứng trên dữ liệu ngoài phạm vi này.
+
+\paragraph{Thiếu biến ngoại sinh.}
+Nhiệt độ và độ ẩm là yếu tố dự báo mạnh cho tiêu thụ điện nhưng không được
+đưa vào mô hình. Phần dư của cả ba mô hình đều cho Ljung--Box $p < 0{,}001$,
+gợi ý một phần cấu trúc chưa giải thích có thể xuất phát từ dao động thời tiết
+ngắn hạn. Ngoài ra, các ngày lễ (holidays) không được xử lý riêng.
+
+\paragraph{Không nắm bắt chu kỳ tuần ($s = 168$ h).}
+Đối tượng \texttt{ts} được khởi tạo với \texttt{frequency = 24}, bỏ qua chu
+kỳ 7 ngày ($168$ h). ACF phần dư của M1 và M2 cho thấy spike tại lag 48 và 72
+--- một phần có thể do chu kỳ tuần chưa được mô hình hóa tường minh.
+
+\paragraph{Đánh giá đơn lần (single split).}
+Dự báo chỉ được đánh giá trên một cửa sổ kiểm tra cố định 18 ngày. Phương
+pháp đánh giá mạnh hơn là \emph{time-series cross-validation} (rolling
+origin evaluation), trong đó mô hình được đánh giá trên nhiều cửa sổ trượt.
+Kết quả MAPE đơn lần có thể bị ảnh hưởng bởi điều kiện thời tiết hoặc sự
+kiện đặc biệt trong giai đoạn kiểm tra cụ thể.
+
+\paragraph{Không có dự báo xác suất.}
+Project chỉ đánh giá \emph{điểm dự báo} (point forecast) và MAPE. Trong vận
+hành lưới điện thực tế, khoảng dự báo (prediction interval) hoặc phân phối dự
+báo (probabilistic forecast) có giá trị thực tiễn cao hơn nhiều, đặc biệt
+cho bài toán lập kế hoạch dự phòng.
+
+% -----------------------------------------------------------------------------
+\subsection{Hướng mở rộng}
+\label{sec:future_work}
+
+\paragraph{Hồi quy với phần dư ARIMA (ARIMAX / Fourier+ARIMA).}
+Kết hợp M1 hoặc M2 với bộ lọc ARIMA trên phần dư (\emph{regression with ARIMA
+errors}) giải quyết trực tiếp vấn đề tự tương quan phần dư mà cả hai mô hình
+gặp phải. Trong gói \texttt{forecast}, hàm \texttt{Arima()} với tham số
+\texttt{xreg} cho phép ước lượng đồng thời hệ số hồi quy và cấu trúc ARMA của
+phần dư.
+
+\paragraph{Xử lý đa chu kỳ: TBATS và \texttt{msts}.}
+Dữ liệu điện thực tế có ít nhất hai chu kỳ lồng nhau: $s_1 = 24$ h (ngày) và
+$s_2 = 168$ h (tuần). Mô hình TBATS (\emph{Trigonometric Seasonality, Box-Cox,
+ARMA errors, Trend and Seasonal components}) xử lý các chu kỳ không nguyên số
+và đa mùa vụ. Trong R, đối tượng \texttt{msts(y, seasonal.periods = c(24,
+168))} kết hợp với \texttt{tbats()} cho phép mô hình hóa cả hai chu kỳ mà
+không cần mở rộng không gian trạng thái thủ công. Với dữ liệu AEP một năm,
+chu kỳ năm ($s_3 = 8760$ h) cũng cần được xét đến.
+
+\paragraph{Bổ sung biến ngoại sinh: SARIMAX.}
+Mở rộng SARIMA bằng biến ngoại sinh (nhiệt độ, chỉ số ngày lễ) theo dạng
+$\text{SARIMA}(p,d,q)(P,D,Q)_s + \mathbf{x}_t^\top\boldsymbol{\beta}$. Dữ liệu
+thời tiết theo giờ có sẵn từ nhiều nguồn công khai (NOAA, ERA5) và được kỳ
+vọng giảm MAPE đáng kể dựa trên sự tương quan đã biết giữa nhiệt độ và tiêu
+thụ điện.
+
+\paragraph{Học máy và mạng nơ-ron.}
+Với dữ liệu đủ dài (nhiều năm), các kiến trúc \emph{LSTM} hoặc
+\emph{Temporal Fusion Transformer (TFT)} có thể học đồng thời nhiều chu kỳ
+và tương tác phi tuyến giữa các biến. Tuy nhiên, các phương pháp này đòi hỏi
+lượng dữ liệu lớn hơn và quá trình chỉnh siêu tham số phức tạp hơn so với
+các mô hình thống kê truyền thống được xét trong project này.
+
+\paragraph{Đánh giá mạnh hơn: time-series cross-validation.}
+Thay thế phân chia train/test đơn lần bằng đánh giá cuốn chiếu (\emph{rolling
+origin evaluation}): huấn luyện trên cửa sổ $[1, t]$, dự báo $[t+1, t+h]$,
+trượt $t$ tăng dần. Phương pháp này cung cấp ước lượng không thiên lệch hơn
+về RMSE/MAPE thực sự của từng mô hình, đặc biệt khi hiệu năng thay đổi theo
+thời gian.
+
 \end{document}
