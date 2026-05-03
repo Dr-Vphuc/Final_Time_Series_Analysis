@@ -1,0 +1,700 @@
+\documentclass[aspectratio=43]{beamer} 
+\usetheme{metropolis} 
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc} % Hỗ trợ tiếng Việt
+\usepackage{xcolor}
+\usepackage{tcolorbox} 
+\usepackage{multirow, booktabs, graphicx}
+
+\metroset{block=fill} 
+\metroset{numbering=fraction} 
+
+% --- BẢNG MÀU CHUẨN ---
+\definecolor{ModernTeal}{HTML}{006D77}
+\definecolor{LightTeal}{HTML}{83C5BE}
+\definecolor{DarkCharcoal}{HTML}{2B2D42}
+
+\setbeamercolor{palette primary}{bg=ModernTeal, fg=white}
+\setbeamercolor{progress bar}{fg=LightTeal, bg=DarkCharcoal}
+\setbeamercolor{frametitle}{bg=ModernTeal, fg=white}
+\setbeamercolor{block title}{bg=ModernTeal, fg=white}
+\setbeamercolor{block body}{bg=ModernTeal!10, fg=DarkCharcoal}
+
+% --- CÀI ĐẶT MÀU CHO CHÂN TRANG (FOOTER) ---
+\setbeamercolor{author in head/foot}{bg=ModernTeal, fg=white}
+\setbeamercolor{title in head/foot}{bg=black!5, fg=ModernTeal} 
+\setbeamercolor{date in head/foot}{bg=black!10, fg=ModernTeal} 
+
+\makeatletter
+\setlength{\metropolis@titleseparator@linewidth}{2pt}
+\makeatother
+
+\setbeamertemplate{footline}{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=.333333\paperwidth,ht=3ex,dp=1.5ex,center]{author in head/foot}%
+    \usebeamerfont{author in head/foot}\insertshortauthor
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.333333\paperwidth,ht=3ex,dp=1.5ex,center]{title in head/foot}%
+    \usebeamerfont{title in head/foot}\insertshorttitle
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.333333\paperwidth,ht=3ex,dp=1.5ex]{date in head/foot}%
+    \hfill\usebeamerfont{date in head/foot}\insertshortdate{}\hfill\insertframenumber{} / \inserttotalframenumber\hspace*{2ex} 
+  \end{beamercolorbox}}%
+  \vskip0pt%
+}
+
+% --- THÔNG TIN DỰ ÁN ---
+\title[Phân tích và dự đoán dữ liệu
+chuỗi tiêu thụ điện trên ba phương pháp Indicator,
+Fourier, và SARIMA]{Phân tích và dự đoán dữ liệu
+chuỗi tiêu thụ điện trên ba phương pháp Indicator,
+Fourier, và SARIMA}
+\subtitle{Time Series Project}
+\author[Nhóm 9]{ 
+    Nguyễn Việt Phúc - 23001547 \\ 
+    Nguyễn Khắc Huy - 23001525 \\ 
+    Nguyễn Ngọc Sơn - 23001557
+}
+\date[06/05/2026]{06/05/2026}
+
+\begin{document}
+
+% Slide tiêu đề
+\begin{frame}[plain] 
+    \maketitle
+\end{frame}
+
+% Slide mục lục
+\begin{frame}{Nội dung trình bày}
+    \tableofcontents[hideallsubsections] 
+\end{frame}
+
+% ==========================================
+% MỤC 1: GIỚI THIỆU
+% ==========================================
+\section{1. Giới thiệu}
+
+% --- Slide 1.1: Bối cảnh ---
+\begin{frame}{1.1. Bối cảnh}
+    \begin{itemize}
+        \item \textbf{Đặc thù ngành điện}: Sản xuất và tiêu thụ phải cân bằng tức thời do khó tích trữ quy mô lớn.
+        \item \textbf{Tầm quan trọng của dự báo}: 
+        \begin{itemize}
+            \item Tối ưu kế hoạch huy động nguồn và giảm chi phí dự phòng.
+            \item Tránh tình trạng quá tải hoặc thiếu hụt công suất.
+        \end{itemize}
+        \item \textbf{Cấu trúc mùa vụ (Seasonality)}: 
+        \begin{itemize}
+            \item \textbf{Ngày}: Cao điểm sáng/chiều, thấp điểm đêm.
+            \item \textbf{Tuần}: Sự khác biệt giữa ngày làm việc và cuối tuần.
+            \item \textbf{Năm}: Biến động rõ rệt giữa mùa hè và mùa đông.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% --- Slide 1.2: Bài toán cụ thể ---
+\begin{frame}{1.2. Bài toán cụ thể}
+    \begin{itemize}
+        \item \textbf{Dữ liệu}: AEP Hourly Energy Consumption (PJM, Hoa Kỳ).
+        \item \textbf{Quy mô}: Giai đoạn 01/06/2017 – 31/08/2017 ($\sim$2.184 quan sát).
+        \item \textbf{Phân chia}: 80\% huấn luyện (Train) / 20\% kiểm tra (Test).
+    \end{itemize}
+    \begin{block}{Các mô hình đối chứng}
+        \begin{enumerate}
+            \item \textbf{M1}: Hồi quy biến chỉ số (Seasonal Indicator).
+            \item \textbf{M2}: Hồi quy điều hòa Fourier (tối ưu bậc $K$ theo AIC).
+            \item \textbf{M3}: Mô hình SARIMA ($s=24$).
+        \end{enumerate}
+    \end{block}
+\end{frame}
+
+% --- Slide 1.3: Mục tiêu & Chỉ số đánh giá ---
+\begin{frame}{1.3. Mục tiêu \& Chỉ số đánh giá}
+    \begin{columns}[T]
+        \begin{column}{0.5\textwidth}
+            \begin{block}{Mục tiêu chính}
+                \begin{itemize}
+                    \item Phân tích EDA \& Kiểm định tính dừng (ADF, KPSS).
+                    \item Xây dựng \& Chẩn đoán phần dư 3 mô hình.
+                    \item So sánh hiệu năng dự báo thực tế.
+                \end{itemize}
+            \end{block}
+        \end{column}
+        
+        \begin{column}{0.5\textwidth}
+            \begin{block}{Tiêu chí đánh giá}
+                \begin{itemize}
+                    \item \textbf{Khớp mẫu}: AIC.
+                    \item \textbf{Dự báo}: RMSE, MAE, MAPE.
+                    \item \textbf{Kiểm định}: Ljung–Box (trễ 24, 48, 72).
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ==========================================
+% MỤC 2: DỮ LIỆU VÀ TIỀN XỬ LÝ
+% ==========================================
+\section{2. Dữ liệu và Tiền xử lý}
+
+% --- Slide 1: 2.1. Nguồn dữ liệu và Đặc điểm ---
+\begin{frame}{2.1. Nguồn dữ liệu và Đặc điểm}
+    \begin{itemize}
+        \item \textbf{Nguồn:} Bộ dữ liệu tiêu thụ điện theo giờ (AEP Hourly Energy Consumption) của PJM Interconnection (Hoa Kỳ).
+        \item \textbf{Phạm vi:} Từ 01/06/2017 đến 31/08/2017 (Dữ liệu mùa hè).
+        \item \textbf{Quy mô:} 2.208 quan sát liên tục theo giờ.
+        \item \textbf{Ưu điểm:} Chu kỳ ngày rõ rệt, dữ liệu sạch (không có giờ thiếu hoặc lỗi DST).
+    \end{itemize}
+    \begin{table}[]
+        \centering
+        \caption{Bảng 1: Thống kê mô tả chuỗi tiêu thụ điện (MW)}
+        \resizebox{0.8\textwidth}{!}{
+        \begin{tabular}{lccccc}
+            \toprule
+            \textbf{N} & \textbf{Mean} & \textbf{Std} & \textbf{Min} & \textbf{Max} \\ \midrule
+            2.208 & 15.144,9 & 2.531 & 9.841 & 22.153 \\ \bottomrule
+        \end{tabular}}
+    \end{table}
+\end{frame}
+
+% --- Slide 2: 2.2. Biến động của chuỗi (Trực quan hóa) ---
+\begin{frame}{2.2. Trực quan hóa: Chu kỳ ngày, tuần và xu hướng (1)}
+    \begin{itemize}
+        \item \textbf{Đặc điểm:} Dao động lặp lại với biên độ lớn, đặc trưng của nhu cầu điện năng.
+        \item \textbf{Xu hướng:} Không có xu hướng tăng/giảm rõ rệt; chuỗi có tính dừng về mặt trung bình.
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{img/fig_s2_01_full_series.png}
+        \caption{Hình 1: Đồ thị tiêu thụ điện AEP toàn chuỗi (tháng 6 – 8/2017)}
+    \end{figure}
+\end{frame}
+
+% --- Slide 3: 2.2. Phân tích đa chu kỳ ---
+\begin{frame}{2.2. Trực quan hóa: Chu kỳ ngày, tuần và xu hướng (2)}
+    \begin{itemize}
+        \item \textbf{Chu kỳ ngày:} Thấp nhất lúc 0h–5h; đạt đỉnh lúc 9h và 18h–20h.
+        \item \textbf{Chu kỳ tuần:} Cuối tuần tiêu thụ thấp hơn (1.000–2.000 MW) và ổn định hơn.
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.45\textwidth]{img/fig_s2_02_weekly_zoom.png} \hfill
+        \includegraphics[width=0.45\textwidth]{img/fig_s2_04_weekday_vs_weekend.png}
+        \caption{Hình 2: Zoom 2 tuần đầu \& Hình 4: So sánh profile ngày thường và cuối tuần}
+    \end{figure}
+\end{frame}
+
+% --- Slide 4: 2.2. Phân rã chuỗi thời gian ---
+\begin{frame}{2.2. Trực quan hóa: Chu kỳ ngày, tuần và xu hướng (3)}
+    \textbf{Phân rã cộng tính ($Y_t = T_t + S_t + R_t$) với $s=24$:}
+    \begin{itemize}
+        \item \textbf{Trend ($T_t$):} Dao động nhẹ quanh mức 15.000 MW.
+        \item \textbf{Seasonal ($S_t$):} Chu kỳ 24h ổn định với biên độ $\pm$3.000 MW.
+        \item \textbf{Random ($R_t$):} Các thành phần nhiễu ngẫu nhiên.
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\textwidth]{img/fig_s2_05_decompose.png}
+        \caption{Hình 5: Đồ thị Decomposition (Observed, Trend, Seasonal, Random)}
+    \end{figure}
+\end{frame}
+
+% --- Slide 5: 2.3. Kiểm định tính dừng thống kê ---
+\begin{frame}{2.3. Kiểm định tính dừng: ADF và KPSS (1)}
+    \begin{itemize}
+        \item \textbf{ADF:} $p < 0,01 \Rightarrow$ Bác bỏ giả thuyết chuỗi không dừng.
+        \item \textbf{KPSS:} $p = 0,052 \Rightarrow$ Chấp nhận tính dừng ở mức biên giới.
+        \item \textbf{Kết luận:} Dữ liệu đủ điều kiện để áp dụng các mô hình dự báo.
+    \end{itemize}
+    \begin{table}
+        \centering
+        \caption{Bảng 2: Kết quả kiểm định ADF và KPSS}
+        \begin{tabular}{lcc}
+        \toprule
+        \textbf{Kiểm định} & \textbf{Giá trị thống kê} & \textbf{P-value} \\ \midrule
+        ADF & -5.42 & 0.000 \\
+        KPSS & 0.43 & 0.052 \\ \bottomrule
+        \end{tabular}
+    \end{table}
+\end{frame}
+
+% --- Slide 6: 2.3. Phân tích tương quan và Sai phân ---
+\begin{frame}{2.3. Kiểm định tính dừng: ADF và KPSS (2)}
+    \begin{itemize}
+        \item \textbf{ACF/PACF:} Spike lớn tại trễ 24, 48, 72 khẳng định tính mùa vụ mạnh.
+        \item \textbf{Xử lý:} Áp dụng sai phân mùa ($D=1, s=24$) cho mô hình SARIMA.
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.45\textwidth]{img/fig_s2_06_acf_pacf.png} \hfill
+        \includegraphics[width=0.45\textwidth]{img/fig_s2_01_full_series.png} % Thay bằng fig_s2_07 nếu có
+        \caption{Hình 6: ACF/PACF chuỗi gốc \& Hình 7: Sau khi sai phân mùa}
+    \end{figure}
+\end{frame}
+% --- Slide 6: 2.3. Kiểm định tính dừng: ADF và KPSS (2) ---
+\begin{frame}{2.3. Kiểm định tính dừng: ADF và KPSS (2)}
+    \begin{itemize}
+        \item \textbf{ACF/PACF:} Xuất hiện các spike lớn tại các trễ 24, 48, 72... khẳng định cấu trúc mùa vụ 24h cực mạnh.
+        \item \textbf{Xử lý:} Cần áp dụng sai phân mùa ($D=1, s=24$) để loại bỏ cấu trúc này trước khi đưa vào mô hình SARIMA.
+    \end{itemize}
+    
+    \begin{figure}
+        \centering
+        \begin{minipage}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{img/fig_s2_06_acf_pacf.png}
+            \caption*{Hình 6: ACF/PACF chuỗi gốc}
+        \end{minipage}
+        \hfill
+        \begin{minipage}{0.48\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{img/fig_s2_07_seasonal_diff.png}
+            \caption*{Hình 7: Sau khi sai phân mùa}
+        \end{minipage}
+        \vspace{0.2cm}
+        \caption{Phân tích tương quan trước và sau khi xử lý sai phân}
+    \end{figure}
+\end{frame}
+
+% ==========================================
+% MỤC 3.2: MÔ HÌNH HỒI QUY BIẾN CHỈ SỐ (M1)
+% ==========================================
+\section{3.2. Mô hình hồi quy biến chỉ số (M1)}
+
+% --- Slide 1: 3.2.1. Thiết lập mô hình ---
+\begin{frame}{3.2.1. Thiết lập mô hình}
+    \begin{itemize}
+        \item \textbf{Phương pháp:} Sử dụng hồi quy tuyến tính bội với các biến giả (dummy variables) để mô hình hóa thành phần mùa vụ.
+        \item \textbf{Các tập biến giải thích:}
+        \begin{itemize}
+            \item \textbf{23 biến chỉ số giờ:} Đại diện cho 24 giờ trong ngày (lấy giờ 0 làm cơ sở).
+            \item \textbf{6 biến chỉ số ngày:} Đại diện cho các ngày trong tuần (lấy Chủ nhật làm cơ sở).
+        \end{itemize}
+        \item \textbf{Thông số kỹ thuật:}
+        \begin{itemize}
+            \item \textbf{Số tham số:} 30 tham số (1 hằng số chặn + 23 biến giờ + 6 biến ngày).
+            \item \textbf{Ước lượng:} Sử dụng phương pháp Bình phương tối thiểu thông thường (OLS).
+        \end{itemize}
+    \end{itemize}
+    \begin{block}{Cấu trúc toán học của mô hình}
+        $$Y_t = \beta_0 + \sum_{i=1}^{23} \beta_i D_{i,t} + \sum_{j=1}^{6} \gamma_j W_{j,t} + \epsilon_t \quad (2)$$
+    \end{block}
+\end{frame}
+
+% --- Slide 2: 3.2.2. Kết quả ước lượng và dự báo ---
+\begin{frame}{3.2.2. Kết quả ước lượng và dự báo}
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \begin{itemize}
+                \item \textbf{Hiệu năng Train:} $R^2 = 0,764$ (Giải thích được 76,4\% phương sai của dữ liệu).
+                \item \textbf{Hiệu năng Test (Dự báo):}
+                \begin{itemize}
+                    \item \textbf{RMSE:} 1.396,87 MW.
+                    \item \textbf{MAPE:} 7,52\% (Kết quả tốt nhất trong 3 mô hình).
+                \end{itemize}
+                \item \textbf{Đặc điểm:} Bám sát biên độ dao động hàng ngày nhưng có xu hướng bị "phẳng hóa" tại các đỉnh/đáy cực trị.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\textwidth]{img/fig_s4_02_model1_fit.png}
+                \caption{Hình 9: Dự báo M1 so với Thực tế trên tập kiểm tra}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% --- Slide 3: 3.2.3. Chẩn đoán phần dư ---
+\begin{frame}{3.2.3. Chẩn đoán phần dư}
+    \begin{columns}
+        \begin{column}{0.45\textwidth}
+            \begin{itemize}
+                \item \textbf{Kiểm định:} Ljung–Box $Q(48)$ cho $p < 0,001 \Rightarrow$ Bác bỏ giả thuyết nhiễu trắng.
+                \item \textbf{ACF phần dư:} Vẫn còn các cột lớn tại lag 24, 48 khẳng định chưa khai thác hết động lực học ngắn hạn.
+                \item \textbf{Kết luận:} Mô hình nắm bắt tốt cấu trúc trung bình mùa vụ nhưng bỏ qua các thay đổi ngắn hạn.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.55\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\textwidth]{img/fig_s4_03_model1_residuals.png}
+                \caption{Hình 10: Chẩn đoán phần dư M1 (ACF và Q-Q plot)}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% ============================================================================
+%  PHẦN BỔ SUNG - DÁN VÀO TRƯỚC \end{document} CỦA FILE SLIDE HIỆN TẠI
+% ============================================================================
+
+% ============================================================================
+%  MỤC 3.3: MÔ HÌNH HỒI QUY ĐIỀU HÒA FOURIER (M2)
+% ============================================================================
+\section{3.3. Mô hình hồi quy điều hòa Fourier (M2)}
+
+% --- Slide 3.3.1: Thiết lập ---
+\begin{frame}{3.3.1. Thiết lập mô hình}
+    \begin{itemize}
+        \item \textbf{Ý tưởng:} Thay 23 biến giả giờ của M1 bằng $K$ cặp sóng hài (sin/cos) với chu kỳ $m=24$.
+        \item \textbf{Ưu điểm:} Số tham số tối thiểu, mô tả mượt biên dạng mùa vụ.
+        \item \textbf{Lựa chọn $K$:} Tối ưu theo tiêu chí AIC trên tập huấn luyện với $K \in \{1, 2, 3, 4\}$.
+    \end{itemize}
+    \begin{block}{Cấu trúc toán học}
+        $$Y_t = \alpha_0 + \sum_{k=1}^{K}\left[a_k \cos\!\left(\frac{2\pi k t}{m}\right) + b_k \sin\!\left(\frac{2\pi k t}{m}\right)\right] + \varepsilon_t$$
+        \centering Số tham số: $2K + 1$
+    \end{block}
+\end{frame}
+
+% --- Slide 3.3.2: Lựa chọn K ---
+\begin{frame}{3.3.2. Lựa chọn số sóng hài $K^*$}
+    \begin{columns}[T]
+        \begin{column}{0.5\textwidth}
+            \begin{itemize}
+                \item $K=2$ cho AIC \textbf{thấp nhất}: $30.769,23$.
+                \item Thêm sóng từ $K \ge 3$ không cải thiện đáng kể nhưng tăng độ phức tạp.
+                \item \textbf{Chọn:} $K^* = 2$ (5 tham số).
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \begin{table}
+                \centering
+                \small
+                \begin{tabular}{ccc}
+                \toprule
+                $K$ & AIC & $\bar{R}^2$ \\
+                \midrule
+                1 & 30.811 & 0,685 \\
+                \textbf{2} & \textbf{30.769} & \textbf{0,693} \\
+                3 & 30.770 & 0,693 \\
+                4 & 30.773 & 0,693 \\
+                \bottomrule
+                \end{tabular}
+            \end{table}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\textwidth]{img/fig_s4_04_model2_k_selection.png}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% --- Slide 3.3.3: Kết quả ---
+\begin{frame}{3.3.3. Kết quả ước lượng và dự báo}
+    \begin{columns}[T]
+        \begin{column}{0.45\textwidth}
+            \begin{itemize}
+                \item \textbf{Hiệu năng Train:}
+                \begin{itemize}
+                    \item $\bar{R}^2 = 0,693$.
+                    \item AIC $= 30.769$.
+                \end{itemize}
+                \item \textbf{Hiệu năng Test:}
+                \begin{itemize}
+                    \item RMSE $= 1.568,68$ MW.
+                    \item MAPE $= 8,35\%$.
+                \end{itemize}
+                \item \textbf{Đặc điểm:} Tái tạo tốt hình dạng sin nhưng kém linh hoạt M1 ở các giờ đỉnh.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.55\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\textwidth]{img/fig_s4_05_model2_fit.png}
+                \caption{Dự báo M2 ($K=2$) so với thực tế}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% --- Slide 3.3.4: Chẩn đoán phần dư ---
+\begin{frame}{3.3.4. Chẩn đoán phần dư}
+    \begin{columns}[T]
+        \begin{column}{0.45\textwidth}
+            \begin{itemize}
+                \item \textbf{Ljung--Box Q(48):} $p < 0,001$ → bác bỏ nhiễu trắng.
+                \item \textbf{ACF:} Còn spike rõ tại chu kỳ 24h, 48h.
+                \item \textbf{Q-Q plot:} Đuôi phân phối dày hơn chuẩn.
+                \item Hài bậc thấp \textbf{không nắm bắt} được dao động ngắn hạn → Cấu trúc tự tương quan còn rất mạnh.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.55\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\textwidth]{img/fig_s4_06_model2_residuals.png}
+                \caption{Phần dư M2: ACF \& Q-Q plot}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+% ============================================================================
+%  MỤC 3.4: MÔ HÌNH SARIMA (M3) -- PHẦN CỦA NGƯỜI TRÌNH BÀY
+% ============================================================================
+\section{3.4. Mô hình SARIMA (M3)}
+
+% --- Slide 3.4.1: Nhận dạng ---
+\begin{frame}{3.4.1. Nhận dạng mô hình}
+    \begin{itemize}
+        \item \textbf{Cơ sở từ EDA:} Chuỗi dừng nhưng có cấu trúc mùa $s = 24$ \textbf{cực mạnh}.
+        \item \textbf{Tiền xử lý:} Áp dụng sai phân mùa $\nabla_{24}y_t = y_t - y_{t-24}$ ($D = 1$).
+        \item \textbf{Quy trình lựa chọn:}
+        \begin{itemize}
+            \item Hàm \texttt{auto.arima()} với ràng buộc $p, q \le 2$ và $P, Q \le 1$.
+            \item Đối chiếu chéo với phân tích ACF/PACF của chuỗi sau sai phân.
+            \item So sánh các ứng viên thủ công theo AIC.
+        \end{itemize}
+    \end{itemize}
+    \begin{block}{Mô hình được chọn}
+        \centering
+        \large $\text{SARIMA}(2, 0, 2)(1, 1, 0)_{24}$
+    \end{block}
+\end{frame}
+
+% --- Slide 3.4.2: Cấu trúc toán học ---
+\begin{frame}{3.4.2. Cấu trúc toán học}
+    \begin{block}{Phương trình SARIMA$(2,0,2)(1,1,0)_{24}$}
+        \small
+        $$(1 - \phi_1 B - \phi_2 B^2)(1 - \Phi_1 B^{24})\,\nabla_{24}\,y_t = (1 + \theta_1 B + \theta_2 B^2)\,\varepsilon_t$$
+        \centering $\varepsilon_t \sim \mathcal{N}(0, \sigma^2)$
+    \end{block}
+    \textbf{Diễn giải các thành phần:}
+    \begin{itemize}
+        \item \textbf{AR(2):} $\phi_1, \phi_2$ -- phụ thuộc vào 2 giờ liền trước.
+        \item \textbf{MA(2):} $\theta_1, \theta_2$ -- hiệu chỉnh nhiễu của 2 bước trước.
+        \item \textbf{SAR(1)$_{24}$:} $\Phi_1$ -- phụ thuộc vào \emph{cùng giờ} của ngày trước.
+        \item \textbf{Sai phân mùa $D = 1$:} loại bỏ chu kỳ ngày $\Rightarrow$ chuỗi dừng.
+    \end{itemize}
+\end{frame}
+
+% --- Slide 3.4.3: Kết quả train/test ---
+\begin{frame}{3.4.3. Kết quả ước lượng và dự báo}
+    \begin{columns}[T]
+        \begin{column}{0.5\textwidth}
+            \begin{block}{Train -- Xuất sắc}
+                \begin{itemize}
+                    \item RMSE $= 154,21$ MW.
+                    \item MAPE $= \mathbf{0,80\%}$.
+                    \item AIC $= 22.540$ (chuỗi sai phân$^*$).
+                \end{itemize}
+            \end{block}
+            \begin{alertblock}{Test -- Suy giảm nghiêm trọng}
+                \begin{itemize}
+                    \item RMSE $= 2.676,65$ MW.
+                    \item MAPE $= \mathbf{13,93\%}$.
+                \end{itemize}
+            \end{alertblock}
+            \footnotesize $^*$ AIC không so sánh trực tiếp với M1, M2.
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\textwidth]{img/fig_s4_07_model3_fit.png}
+                \caption{Dự báo M3 SARIMA trên tập kiểm tra}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% --- Slide 3.4.4: Phân tích Overfitting (slide nhấn mạnh) ---
+\begin{frame}{3.4.4. Phân tích hiện tượng quá khớp (Overfitting)}
+    \begin{block}{Quan sát chính}
+        Tỷ số RMSE Test / Train $\approx \mathbf{17}$ lần $\Rightarrow$ Dấu hiệu overfitting điển hình.
+    \end{block}
+    \textbf{Nguyên nhân gốc rễ:}
+    \begin{enumerate}
+        \item \textbf{Dữ liệu huấn luyện ngắn:} Chỉ 74 ngày -- chưa đủ để ổn định ARMA(2,2).
+        \item \textbf{Mô hình ghi nhớ nhiễu:} Bắt cấu trúc nhiễu ngắn hạn trong train thay vì học cấu trúc mùa vụ tổng quát.
+        \item \textbf{Phân phối khác biệt:} Đặc điểm tiêu thụ mùa hè sớm (train) khác mùa hè muộn (test).
+    \end{enumerate}
+    \textbf{Bài học:} SARIMA mạnh ở dự báo \emph{ngắn hạn} (24--48h) nhưng cần dữ liệu \emph{đủ dài} để ổn định.
+\end{frame}
+
+% --- Slide 3.4.5: Chẩn đoán phần dư ---
+\begin{frame}{3.4.5. Chẩn đoán phần dư}
+    \begin{columns}[T]
+        \begin{column}{0.45\textwidth}
+            \begin{itemize}
+                \item \textbf{Miền thời gian:} Phần dư trông \emph{gần nhiễu trắng}.
+                \item \textbf{ACF:} Giảm rất nhanh, phù hợp cấu trúc ARMA.
+                \item \textbf{Ljung--Box Q(48):} $p < 0,001$ -- vẫn bác bỏ nhiễu trắng (cấu trúc nhỏ chưa nắm hết).
+                \item \textbf{Q-Q plot:} Phân phối phần dư \textbf{gần chuẩn hơn} M1, M2.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.55\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\textwidth]{img/fig_s4_08_model3_residuals.png}
+                \caption{Phần dư M3: ACF \& Q-Q plot}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+% ============================================================================
+%  MỤC 4: SO SÁNH TỔNG HỢP
+% ============================================================================
+\section{4. So sánh tổng hợp}
+
+% --- Slide 4.1: Bảng so sánh ---
+\begin{frame}{4.1. Bảng chỉ số hiệu năng}
+    \begin{table}
+        \centering
+        \footnotesize
+        \begin{tabular}{lrrrrrrr}
+        \toprule
+        \multirow{2}{*}{Mô hình} & \multirow{2}{*}{AIC}
+          & \multicolumn{3}{c}{Tập huấn luyện}
+          & \multicolumn{3}{c}{Tập kiểm tra} \\
+        \cmidrule(lr){3-5}\cmidrule(lr){6-8}
+        & & RMSE & MAE & MAPE & RMSE & MAE & MAPE \\
+        \midrule
+        M1 Indicator & 30.356 & 1.285 & 1.030 & 6,79\% & \textbf{1.397} & \textbf{1.177} & \textbf{7,52\%} \\
+        M2 Fourier ($K=2$) & 30.769 & 1.464 & 1.207 & 8,03\% & 1.569 & 1.287 & 8,35\% \\
+        M3 SARIMA & 22.540$^*$ & \textbf{154} & \textbf{117} & \textbf{0,80\%} & 2.677 & 2.233 & 13,93\% \\
+        \bottomrule
+        \end{tabular}
+    \end{table}
+    \footnotesize $^*$ AIC SARIMA tính trên chuỗi sai phân, không so sánh trực tiếp với M1/M2.
+    \begin{block}{Kết luận chính}
+        \begin{itemize}
+            \item \textbf{M1 thắng dự báo} (test); \textbf{M3 thắng khớp train}; \textbf{M2 cân bằng tham số}.
+            \item Cả 3 mô hình \textbf{đều không đạt nhiễu trắng} (Ljung--Box $p < 0,001$).
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+% --- Slide 4.2: Trực quan dự báo ---
+\begin{frame}{4.2. So sánh trực quan dự báo}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.85\textwidth]{img/fig_s5_02_forecast_zoom.png}
+        \caption{Zoom 7 ngày đầu tập kiểm tra: 3 mô hình vs.\ thực tế}
+    \end{figure}
+    \begin{itemize}
+        \item \textbf{M1, M2:} dự báo \emph{tĩnh} -- cùng một biên dạng cho mọi ngày cùng thứ.
+        \item \textbf{M3 SARIMA:} chính xác trong 24--48h đầu, sau đó \emph{trôi dạt xuống} dưới.
+    \end{itemize}
+\end{frame}
+
+% --- Slide 4.3: ACF phần dư ---
+\begin{frame}{4.3. So sánh ACF phần dư}
+    \begin{columns}[T]
+        \begin{column}{0.5\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\textwidth]{img/fig_s5_03_residual_acf_compare.png}
+                \caption{ACF phần dư của 3 mô hình}
+            \end{figure}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \begin{itemize}
+                \item \textbf{M3 SARIMA:} phần dư \textbf{gần nhiễu trắng nhất}.
+                \item \textbf{M1, M2:} còn spike rõ tại lag 24, 48, 72 → \emph{chu kỳ tuần} ($s=168$h) chưa được mô hình hóa.
+                \item Gợi ý mở rộng: TBATS đa chu kỳ.
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+% --- Slide 4.4: Thời gian tính toán ---
+\begin{frame}{4.4. Thời gian tính toán}
+    \begin{table}
+        \centering
+        \begin{tabular}{lrl}
+        \toprule
+        Mô hình & Thời gian (s) & Ghi chú \\
+        \midrule
+        M1 Indicator & 0,020 & OLS với 30 biến \\
+        M2 Fourier ($K=2$) & $< 0,01$ & OLS với 5 biến \\
+        M3 SARIMA & 2,570 & \texttt{auto.arima} tìm tham số \\
+        \bottomrule
+        \end{tabular}
+    \end{table}
+    \begin{itemize}
+        \item M3 chậm hơn M1 \textbf{$\sim 130$ lần}.
+        \item Trong dự báo \emph{thời gian thực} với cập nhật thường xuyên → M1, M2 có lợi thế tốc độ rõ rệt.
+    \end{itemize}
+\end{frame}
+
+
+% ============================================================================
+%  MỤC 5: THẢO LUẬN VÀ KẾT LUẬN
+% ============================================================================
+\section{5. Thảo luận và Kết luận}
+
+% --- Slide 5.1: Khi nào dùng phương pháp nào ---
+\begin{frame}{5.1. Khi nào nên dùng phương pháp nào}
+    \begin{table}
+        \centering
+        \footnotesize
+        \begin{tabular}{lccc}
+        \toprule
+        \textbf{Tình huống} & \textbf{M1} & \textbf{M2} & \textbf{M3} \\
+        \midrule
+        Biên dạng mùa vụ phức tạp & \checkmark\checkmark & \checkmark & \checkmark \\
+        Horizon dài ($h > 48$h) & \checkmark\checkmark & \checkmark & $\times$ \\
+        Horizon ngắn ($h \le 24$h) & \checkmark & \checkmark & \checkmark\checkmark \\
+        Dữ liệu ngắn ($< 90$ ngày) & \checkmark\checkmark & \checkmark\checkmark & $\times$ \\
+        Cần diễn giải hệ số & \checkmark\checkmark & \checkmark & $\times$ \\
+        Tốc độ tính toán & \checkmark & \checkmark\checkmark & $\times$ \\
+        Phần dư gần nhiễu trắng & $\times$ & $\times$ & \checkmark \\
+        \bottomrule
+        \end{tabular}
+    \end{table}
+    \footnotesize \checkmark\checkmark\ = rất phù hợp; \quad \checkmark\ = chấp nhận được; \quad $\times$\ = không khuyến khích.
+\end{frame}
+
+% --- Slide 5.2: Hạn chế ---
+\begin{frame}{5.2. Hạn chế của project}
+    \begin{itemize}
+        \item \textbf{Phạm vi dữ liệu hẹp:} Chỉ 3 tháng mùa hè 2017, một vùng (AEP) -- chưa kiểm chứng cho mùa khác.
+        \item \textbf{Thiếu biến ngoại sinh:} Nhiệt độ, độ ẩm, ngày lễ chưa được tích hợp -- yếu tố mạnh nhất bị bỏ qua.
+        \item \textbf{Bỏ qua chu kỳ tuần:} \texttt{frequency = 24} không nắm $s = 168$h.
+        \item \textbf{Đánh giá đơn lần:} Chưa dùng time-series cross-validation (rolling origin).
+        \item \textbf{Không có dự báo xác suất:} Chỉ point forecast, thiếu prediction interval -- giá trị thực tiễn thấp hơn.
+    \end{itemize}
+\end{frame}
+
+% --- Slide 5.3: Hướng mở rộng ---
+\begin{frame}{5.3. Hướng mở rộng}
+    \begin{itemize}
+        \item \textbf{ARIMAX / Fourier+ARIMA:} Kết hợp M1/M2 với bộ lọc ARIMA trên phần dư để xử lý tự tương quan còn lại.
+        \item \textbf{TBATS với \texttt{msts}:} Mô hình hóa đa chu kỳ ($s_1 = 24$, $s_2 = 168$, $s_3 = 8760$).
+        \item \textbf{SARIMAX:} Bổ sung biến ngoại sinh nhiệt độ → kỳ vọng giảm MAPE \emph{đáng kể}.
+        \item \textbf{Học sâu (LSTM, TFT):} Cho dữ liệu nhiều năm, học đa chu kỳ và tương tác phi tuyến.
+        \item \textbf{Rolling-origin evaluation:} Đánh giá không thiên lệch hơn về RMSE/MAPE thực sự.
+    \end{itemize}
+\end{frame}
+
+% --- Slide 5.4: Kết luận ---
+\begin{frame}{5.4. Kết luận}
+    \begin{block}{Phát hiện chính}
+        \begin{itemize}
+            \item \textbf{M1 thắng dự báo} với MAPE $= 7,52\%$ nhờ linh hoạt theo giờ-thứ.
+            \item \textbf{M2} là lựa chọn tiết kiệm tham số (5 vs.\ 30) với MAPE $= 8,35\%$.
+            \item \textbf{M3 SARIMA} bị overfit nghiêm trọng do dữ liệu chỉ 74 ngày -- mạnh trên train nhưng yếu trên test.
+        \end{itemize}
+    \end{block}
+    \begin{block}{Khuyến nghị thực tiễn}
+        \begin{itemize}
+            \item Cấu trúc \emph{chu kỳ tuần} và biến \emph{nhiệt độ} là chìa khóa để giảm MAPE xuống dưới $5\%$.
+            \item Lựa chọn mô hình phải phù hợp với \emph{độ dài dữ liệu} và \emph{horizon dự báo}.
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+% --- Slide cảm ơn ---
+\begin{frame}[standout]
+    Cảm ơn thầy/cô và các bạn\\đã lắng nghe!
+    \vspace{0.8cm}
+    
+    \large Q\&A
+\end{frame}
+
+\end{document}
