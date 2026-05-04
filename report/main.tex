@@ -32,7 +32,7 @@
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\textit{Báo cáo Machine Learning}}
+\fancyhead[L]{\small\textit{Báo cáo Phân tích chuỗi thời gian}}
 \fancyhead[R]{\small\textit{\leftmark}}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
@@ -112,7 +112,7 @@
   linkcolor=black,
   citecolor=blue,
   urlcolor=blue,
-  pdftitle={Báo cáo Machine Learning},
+  pdftitle={Báo cáo Phân tích chuỗi thời gian},
   pdfauthor={Tên Nhóm},
 ]{hyperref}
 \usepackage{bookmark}
@@ -161,15 +161,89 @@
 % ============================================================
 \begin{document}
 
-\maketitle
+% ============================================================
+%  TRANG BÌA CHUẨN
+% ============================================================
+ 
+\begin{titlepage}
 \thispagestyle{empty}
-\newpage
+\newgeometry{top=1.5cm, bottom=1.5cm, left=1.5cm, right=1.5cm}
+ 
+\fbox{%
+\begin{minipage}[c][\dimexpr\textheight-1cm\relax][c]{\dimexpr\textwidth-1cm\relax}
+\centering
+ 
+\vspace*{\fill}
+ 
+% --- HEADER: Tên trường ---
+{\large\bfseries ĐẠI HỌC QUỐC GIA HÀ NỘI}\\[0.3cm]
+{\large\bfseries TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}\\[0.3cm]
+{\large\bfseries KHOA TOÁN -- CƠ -- TIN HỌC}\\[0.5cm]
+ 
+\rule{0.4\textwidth}{0.5pt}
+ 
+\vspace*{\fill}
+ 
+% --- LOGO ---
+\includegraphics[width=4cm]{img/HUS.png}
+ 
+\vspace*{\fill}
+ 
+% --- TÊN MÔN HỌC ---
+{\Large\bfseries BÁO CÁO MÔN}\\[0.3cm]
+{\Large\bfseries PHÂN TÍCH CHUỖI THỜI GIAN}
+ 
+\vspace*{\fill}
+ 
+% --- TIÊU ĐỀ BÁO CÁO ---
+\rule{0.7\textwidth}{0.8pt}\\[0.4cm]
+{\LARGE\bfseries Phân tích và Dự đoán Dữ liệu\\[0.3cm]
+chuỗi tiêu thụ điện trên ba phương pháp\\[0.3cm]
+Indicator, Fourier, và SARIMA\par}\\[0.4cm]
+\rule{0.7\textwidth}{0.8pt}
+ 
+\vspace*{\fill}
+ 
+% --- THÔNG TIN NHÓM ---
+\begin{minipage}{0.85\textwidth}
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{@{}rl@{}}
+    % \large\textbf{Giảng viên hướng dẫn:} & \large \textit{[Tên giảng viên]}\\
+    \large\textbf{Nhóm sinh viên thực hiện:} & \\
+    & \large Nguyễn Việt Phúc -- 23001547\\
+    & \large Nguyễn Khắc Huy -- 23001525\\
+    & \large Nguyễn Ngọc Sơn -- 23001557\\
+    \large\textbf{Lớp:} & \large K68A5\\
+  \end{tabular}
+\end{minipage}
+ 
+\vspace*{\fill}
+ 
+% --- FOOTER ---
+\rule{0.4\textwidth}{0.5pt}\\[0.4cm]
+{\large\bfseries Hà Nội, \the\year}
+ 
+\vspace*{\fill}
+ 
+\end{minipage}%
+}
+ 
+\restoregeometry
+\end{titlepage}
 
 % -----------------------------------------------------------
 \begin{abstract}
 \noindent
-Báo cáo này trình bày pipeline xử lý dữ liệu đầy đủ bao gồm các bước...
-% TODO: điền kết quả nổi bật sau khi hoàn thiện thực nghiệm
+Dự báo tiêu thụ điện theo giờ là bài toán then chốt trong vận hành lưới điện, đòi hỏi mô hình phải nắm bắt đồng thời nhiều cấu trúc mùa vụ (ngày, tuần, năm) trên dữ liệu có biên độ dao động lớn. Báo cáo này so sánh ba phương pháp mô hình hóa mùa vụ cổ điển trên cùng một bộ dữ liệu và cùng tiêu chí đánh giá: (i) hồi quy biến chỉ số (M1) với 30 biến giả giờ và thứ, (ii) hồi quy điều hòa Fourier (M2) với số sóng hài $K$ tối ưu theo AIC, và (iii) mô hình SARIMA$(p,d,q)(P,D,Q)_{24}$ (M3).
+
+Dữ liệu sử dụng là chuỗi \textit{AEP Hourly Energy Consumption} của PJM Interconnection trong giai đoạn 01/06--31/08/2017 với 2.208 quan sát, được chia 80/20 thành tập huấn luyện và kiểm tra. Ba mô hình được đánh giá qua các chỉ số AIC, RMSE, MAE, MAPE và kiểm định Ljung--Box trên phần dư.
+
+Kết quả thực nghiệm cho thấy M1 đạt hiệu năng dự báo ngoài mẫu tốt nhất với MAPE $= 7{,}52\%$ nhờ mô tả linh hoạt biên dạng tiêu thụ theo từng giờ--thứ. M2 với $K^* = 2$ đạt MAPE $= 8{,}35\%$ -- là lựa chọn cân bằng giữa độ tiết kiệm tham số (5 so với 30) và độ chính xác. Ngược lại, M3 SARIMA$(2,0,2)(1,1,0)_{24}$ gặp hiện tượng quá khớp nghiêm trọng: MAPE trên tập huấn luyện chỉ $0{,}80\%$ nhưng tăng lên $13{,}93\%$ trên tập kiểm tra (tỷ số RMSE gấp $\sim 17$ lần), do tập dữ liệu 74 ngày chưa đủ để ổn định thành phần ARMA bậc cao. Kiểm định Ljung--Box bác bỏ giả thuyết nhiễu trắng cho cả ba mô hình ($p < 0{,}001$), gợi ý sự tồn tại của chu kỳ tuần ($s = 168$ giờ) và biến động do thời tiết chưa được mô hình hóa.
+
+Báo cáo kết luận rằng việc lựa chọn mô hình mùa vụ cần được điều chỉnh theo độ dài dữ liệu và horizon dự báo cụ thể; đồng thời đề xuất các hướng mở rộng triển vọng bao gồm TBATS đa chu kỳ, hồi quy với phần dư ARIMA, và tích hợp biến ngoại sinh nhiệt độ để giảm MAPE xuống dưới ngưỡng $5\%$ thường dùng trong vận hành lưới điện thực tế.
+
+\medskip
+\noindent\textbf{Từ khóa:} chuỗi thời gian, dự báo tiêu thụ điện, hồi quy biến chỉ số, hồi quy Fourier, SARIMA, mùa vụ.
 \end{abstract}
 
 \newpage
@@ -231,7 +305,7 @@ Báo cáo hướng đến bốn mục tiêu cụ thể:
 % ============================================================
 
 \subsection{Nguồn dữ liệu và mô tả}
-
+\label{sec:data}
 Nghiên cứu sử dụng bộ dữ liệu \textit{AEP Hourly Energy Consumption} được thu thập
 bởi công ty \textit{PJM Interconnection LLC} --- một tổ chức vận hành lưới điện liên
 vùng tại miền Đông Hoa Kỳ. Bộ dữ liệu được công bố công khai trên nền tảng Kaggle
@@ -408,12 +482,13 @@ trúc mùa vụ mạnh trong ACF cho thấy các mô hình cần xử lý thành
 pháp M1, M2, M3 trong các phần tiếp theo.
 
 % =============================================================================
-\section{Cơ sở lý thuyết}
+% \section{Cơ sở lý thuyết}
 % TODO — sẽ bổ sung sau
 % =============================================================================
 
 % =============================================================================
 \section{Thực nghiệm và Kết quả}
+\label{sec:experiment}
 % =============================================================================
 
 \subsection{Cài đặt thực nghiệm}
@@ -916,5 +991,9 @@ origin evaluation}): huấn luyện trên cửa sổ $[1, t]$, dự báo $[t+1, 
 trượt $t$ tăng dần. Phương pháp này cung cấp ước lượng không thiên lệch hơn
 về RMSE/MAPE thực sự của từng mô hình, đặc biệt khi hiệu năng thay đổi theo
 thời gian.
+
+\section{Kết luận}
+
+Project này xây dựng và so sánh ba phương pháp mô hình hóa chuỗi thời gian mùa vụ trên dữ liệu tiêu thụ điện theo giờ của vùng AEP (tháng 6--8/2017, $N = 2.208$ quan sát): hồi quy biến chỉ số (M1), hồi quy điều hòa Fourier (M2) và SARIMA (M3). Kết quả thực nghiệm cho thấy M1 đạt hiệu năng dự báo tốt nhất trên tập kiểm tra 18 ngày với MAPE $= 7{,}52\%$, nhờ khả năng mô tả linh hoạt biên dạng tiêu thụ theo từng giờ và từng thứ mà không áp đặt giả thiết về dạng hàm. M2 Fourier với $K^* = 2$ đạt MAPE $= 8{,}35\%$ bằng chỉ 5 tham số, là lựa chọn cân bằng giữa độ tiết kiệm tham số và độ chính xác. M3 SARIMA$(2,0,2)(1,1,0)_{24}$ gặp hiện tượng quá khớp nghiêm trọng (MAPE huấn luyện $0{,}80\%$ so với $13{,}93\%$ trên kiểm tra) do tập dữ liệu 74 ngày chưa đủ để ổn định hóa thành phần ARMA bậc cao. Một phát hiện chung quan trọng là cả ba mô hình đều không đạt phần dư nhiễu trắng, gợi ý sự tồn tại của cấu trúc chưa được giải thích --- đặc biệt là chu kỳ tuần ($s = 168$ h) và dao động do nhiệt độ. Các hướng mở rộng triển vọng bao gồm TBATS cho đa chu kỳ, hồi quy với phần dư ARIMA, và bổ sung biến ngoại sinh nhiệt độ để giảm MAPE xuống dưới ngưỡng $5\%$ thường dùng trong vận hành lưới điện thực tế.
 
 \end{document}
